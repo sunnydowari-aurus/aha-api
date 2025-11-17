@@ -1,10 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const cossmicRouter = require("../reference/cossmic/routes/CossmicMasterRoute");
+const emailModule = require("../modules/CossmicEmailModule");
 
-// Mount Cossmic Email routes
-router.use("/", cossmicRouter);
+router.post("/createEmail", emailModule.createEmail);
 
 module.exports = router;
-
-

@@ -58,13 +58,24 @@ The server will start on the port specified in your `.env` file (default: 3000).
 ├── server.js                 # Main Express server file
 ├── config/
 │   └── db.js                # MongoDB connection configuration
+├── routes/                   # All route files
+│   ├── index.js             # Route aggregator
+│   ├── healthRoutes.js      # Health check routes
+│   ├── testRoutes.js        # Test API routes (Zoho webhook & Meta CAPI)
+│   ├── ahaEmailRoutes.js    # AHA Email routes
+│   ├── cossmicEmailRoutes.js # Cossmic Email routes
+│   └── orderRoutes.js       # Order/Rista routes
+├── modules/                  # Business logic modules
+│   ├── AHAEmailModule.js    # AHA Email module functions
+│   ├── CossmicEmailModule.js # Cossmic Email module functions
+│   └── StaticModule.js      # Static utility functions
+├── schemas/                  # MongoDB schemas
+│   ├── AhaEmailMaster.js
+│   ├── AhaLogMaster.js
+│   ├── AurusEmailMaster.js
+│   └── CossmicEmailMaster.js
 ├── package.json             # Dependencies and scripts
-├── ENV_VARIABLES.md         # Environment variables documentation
-├── reference/               # Reference routes and modules
-│   ├── aha/
-│   ├── cossmic/
-│   └── src/
-└── test-api/                # Test API routes (integrated into server.js)
+└── ENV_VARIABLES.md         # Environment variables documentation
 ```
 
 ## Features
