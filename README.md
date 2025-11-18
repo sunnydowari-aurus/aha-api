@@ -61,7 +61,7 @@ The server will start on the port specified in your `.env` file (default: 3000).
 ├── routes/                   # All route files
 │   ├── index.js             # Route aggregator
 │   ├── healthRoutes.js      # Health check routes
-│   ├── testRoutes.js        # Test API routes (Zoho webhook & Meta CAPI)
+│   ├── fbpixelRoute.js      # Facebook Pixel CAPI routes (Zoho webhook & Meta CAPI)
 │   ├── ahaEmailRoutes.js    # AHA Email routes
 │   ├── cossmicEmailRoutes.js # Cossmic Email routes
 │   └── orderRoutes.js       # Order/Rista routes
