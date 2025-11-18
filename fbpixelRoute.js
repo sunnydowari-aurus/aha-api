@@ -329,16 +329,7 @@ router.post("/ahaleads/fb-pixel", async (req, res) => {
         description: "Data formatted for Facebook Pixel CAPI (with SHA256 hashed user data)",
         data: pixelData
       },
-      pixel_response: pixelResponse,
-      processed_fields: {
-        fn: "First name (split from full_name)",
-        ln: "Last name (split from full_name)",
-        phone: "Cleaned phone number with country code",
-        city: "City (from ct field)",
-        state: "State (from st field)",
-        pincode: "Pincode/Zipcode (from zp field)",
-        hashed: "SHA256 hashed versions of fn, ln, ph, ct, st, zp, country (sent to Facebook Pixel CAPI)"
-      }
+      pixel_response: pixelResponse
     });
   } catch (err) {
     console.error("Error:", err);
