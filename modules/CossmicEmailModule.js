@@ -1,6 +1,7 @@
-const nodemailer = require('nodemailer');
-const sesTransport = require('nodemailer-ses-transport');
-const cossmicSchema = require('../schemas/CossmicEmailMaster');
+// const nodemailer = require('nodemailer'); // Not currently used
+// const sesTransport = require('nodemailer-ses-transport'); // Not currently used
+const path = require('path');
+const cossmicSchema = require(path.join(__dirname, '../schemas/CossmicEmailMaster'));
 
 module.exports.createEmail = async (req, res, next) => {
     try {

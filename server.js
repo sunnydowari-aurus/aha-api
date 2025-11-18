@@ -2,10 +2,11 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const createError = require("http-errors");
-const connectDB = require("./config/db");
+const path = require("path");
+const connectDB = require(path.join(__dirname, "./config/db"));
 
 // Import all routes
-const routes = require("./routes");
+const routes = require(path.join(__dirname, "./routes"));
 
 const app = express();
 
@@ -94,7 +95,7 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/`);
-  console.log(`AHA Email routes: http://localhost:${PORT}/AhaEmail/*`);
+  // console.log(`AHA Email routes: http://localhost:${PORT}/AhaEmail/*`); // Commented out - not in use
   console.log(`Cossmic Email routes: http://localhost:${PORT}/CossmicEmail/*`);
   console.log(`Order routes: http://localhost:${PORT}/Order/*`);
   console.log(`Test Pixel endpoint: http://localhost:${PORT}/test/pixel`);

@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const emailModule = require("../modules/CossmicEmailModule");
+const path = require("path");
+const emailModule = require(path.join(__dirname, "../modules/CossmicEmailModule"));
 
 router.post("/createEmail", emailModule.createEmail);
 
