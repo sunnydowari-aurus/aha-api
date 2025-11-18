@@ -3,15 +3,16 @@ const express = require("express");
 const cors = require("cors");
 const createError = require("http-errors");
 const path = require("path");
-const connectDB = require(path.join(__dirname, "./config/db"));
+// MongoDB connection disabled for FB Pixel testing
+// const connectDB = require(path.join(__dirname, "./config/db"));
 
 // Import all routes
 const routes = require(path.join(__dirname, "./routes"));
 
 const app = express();
 
-// Connect to MongoDB
-connectDB();
+// MongoDB connection disabled for FB Pixel testing
+// connectDB();
 
 // CORS configuration
 const corsOptions = {
