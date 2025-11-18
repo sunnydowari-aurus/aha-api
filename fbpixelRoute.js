@@ -284,7 +284,7 @@ router.post("/ahaleads/fb-pixel", async (req, res) => {
     // Send to Facebook Pixel CAPI
     const requestBody = {
       data: validPixelData,
-      test_event_code: "TEST15990"
+      test_event_code: "TEST83793"
     };
     
     console.log("\nSending to Facebook Pixel CAPI:");
