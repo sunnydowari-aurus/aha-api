@@ -221,7 +221,7 @@ router.post("/ahaleads/fb-pixel", async (req, res) => {
       if (hashedSt) user_data.st = [hashedSt];
       if (hashedZp) user_data.zp = [hashedZp];
       if (hashedCountry) user_data.country = [hashedCountry];
-      if (event.event_id) user_data.lead_id = [String(event.event_id)];
+      if (event.lead_id) user_data.lead_id = [String(event.lead_id)];
 
       // Validate that user_data has at least one customer information parameter
       // Facebook requires at least one of: fn, ln, ph, ct, st, zp, country, or lead_id
@@ -244,7 +244,7 @@ router.post("/ahaleads/fb-pixel", async (req, res) => {
 
       // Build custom_data object
       const custom_data = {};
-      if (event.event_id) custom_data.lead_id = String(event.event_id);
+      if (event.lead_id) custom_data.lead_id = String(event.lead_id);
 
       return {
         event_name: event.event_name,
