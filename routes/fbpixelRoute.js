@@ -1,4 +1,3 @@
-
 const express = require("express");
 const router = express.Router();
 const crypto = require("crypto");
@@ -133,8 +132,8 @@ router.post("/ahaleads/fb-pixel", async (req, res) => {
       const rawPincode = event.zp;
       // Handle lead ID - check multiple possible field names
       const rawLeadId = event.lead_id;
-      // Extract event_id from CRM (separate from lead_id)
-      const rawEventId = event.event_id || null;
+      // Extract event_id from CRM (separate from lead_id) - ensure it stays as string to prevent precision loss
+      const rawEventId = event.event_id ? String(event.event_id) : null;
       
       // Debug: Log lead ID extraction
       if (!rawLeadId) {
@@ -222,7 +221,7 @@ router.post("/ahaleads/fb-pixel", async (req, res) => {
       if (hashedSt) user_data.st = [hashedSt];
       if (hashedZp) user_data.zp = [hashedZp];
       if (hashedCountry) user_data.country = [hashedCountry];
-      if (event.event_id) user_data.lead_id = [event.event_id];
+      if (event.event_id) user_data.lead_id = [String(event.event_id)];
 
       // Validate that user_data has at least one customer information parameter
       // Facebook requires at least one of: fn, ln, ph, ct, st, zp, country, or lead_id
@@ -245,13 +244,13 @@ router.post("/ahaleads/fb-pixel", async (req, res) => {
 
       // Build custom_data object
       const custom_data = {};
-      if (event.event_id) custom_data.lead_id = event.event_id;
+      if (event.event_id) custom_data.lead_id = String(event.event_id);
 
       return {
         event_name: event.event_name,
         event_time: event.event_time,
         action_source: event.action_source,
-        event_id: event.event_id ? `crm_lead_${event.event_id}` : `lead_${Date.now()}_${event.index}`,
+        event_id: event.event_id ? `crm_lead_${String(event.event_id)}` : `lead_${Date.now()}_${event.index}`,
         user_data: user_data,
         custom_data: custom_data
       };
