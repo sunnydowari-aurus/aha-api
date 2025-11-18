@@ -36,6 +36,14 @@ app.use(cors(corsOptions));
 app.use(express.static(__dirname + '/'));
 app.use(express.json());
 
+// URL normalization middleware - remove double slashes
+app.use((req, res, next) => {
+  // Normalize the URL by removing double slashes (except after protocol)
+  req.url = req.url.replace(/([^:]\/)\/+/g, '$1');
+  req.originalUrl = req.originalUrl.replace(/([^:]\/)\/+/g, '$1');
+  next();
+});
+
 // CORS headers middleware
 const whitelist = [
   "https://pmt.ahasmarthomes.com",
@@ -67,22 +75,42 @@ app.use(routes);
 
 // 404 handler
 app.use(function (req, res, next) {
-  next(createError(404));
+  const error = createError(404, `Route not found: ${req.method} ${req.originalUrl}`);
+  next(error);
 });
 
 // Error handler
 app.use(function (err, req, res, next) {
-  res.locals.message = err.message;
-  res.locals.error = req.app.get("env") === "development" ? err : {};
-
-  res.status(err.status || 500);
-  console.log("error: " + err + " Req:" + req);
-  res.json({
-    message: req + ", error: " + err,
-    error: err,
-    status: 500,
-    result: false
+  const status = err.status || 500;
+  const isDevelopment = req.app.get("env") === "development";
+  
+  // Log error details
+  console.error(`Error ${status}:`, {
+    message: err.message,
+    method: req.method,
+    url: req.originalUrl,
+    stack: isDevelopment ? err.stack : undefined
   });
+
+  // Don't send error details in production for security
+  const errorResponse = {
+    error: {
+      message: status === 404 
+        ? `Route not found: ${req.method} ${req.originalUrl}`
+        : status === 500 
+          ? "Internal server error" 
+          : err.message,
+      status: status
+    },
+    result: false
+  };
+
+  // Include stack trace in development
+  if (isDevelopment) {
+    errorResponse.error.stack = err.stack;
+  }
+
+  res.status(status).json(errorResponse);
 });
 
 // Uncaught exception handler
