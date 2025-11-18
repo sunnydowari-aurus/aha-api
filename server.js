@@ -123,10 +123,10 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/`);
-  // console.log(`AHA Email routes: http://localhost:${PORT}/AhaEmail/*`); // Commented out - not in use
+  console.log(`AHA Email routes: http://localhost:${PORT}/AhaEmail/*`);
   console.log(`Cossmic Email routes: http://localhost:${PORT}/CossmicEmail/*`);
   console.log(`Order routes: http://localhost:${PORT}/Order/*`);
-  console.log(`Test Pixel endpoint: http://localhost:${PORT}/test/pixel`);
+  console.log(`AHA Leads FB Pixel endpoint: http://localhost:${PORT}/ahaleads/fb-pixel`);
   console.log(`Webhook endpoint: http://localhost:${PORT}/webhook/zoho-lead`);
 });
 

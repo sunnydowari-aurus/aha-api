@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const path = require("path");
-const emailModule = require(path.join(__dirname, "../modules/AHAEmailModule"));
+const emailModule = require("../module/AHAEmailModule");
+
 
 router.post("/sendEmail", emailModule.sendAHAEmail);
 router.post("/sendNewAHAEmail", emailModule.sendNewAHAEmail);
@@ -18,5 +18,6 @@ router.post("/sendCurtainsEmail", emailModule.sendAHACurtainsEmail);
 router.post("/careerAurusEmail", emailModule.careerAurusEmail);
 router.post("/sendMumbaiLandingEmail", emailModule.sendMumbaiLandingEmail);
 router.post("/WebHook", emailModule.WebHook);
+
 
 module.exports = router;

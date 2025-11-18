@@ -45,7 +45,7 @@ The server will start on the port specified in your `.env` file (default: 3000).
 - Routes: getResourceId, PushOrderDataRista
 
 ### Test API Routes (Zoho Webhook & Meta CAPI)
-- `POST /test/pixel` - Test endpoint to verify Facebook Pixel
+- `POST /ahaleads/fb-pixel` - AHA Leads Facebook Pixel endpoint (sends data to Facebook Pixel CAPI)
 - `POST /webhook/zoho-lead` - Zoho CRM webhook endpoint
 
 ### Health Check
