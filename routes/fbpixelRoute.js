@@ -1,3 +1,4 @@
+
 const express = require("express");
 const router = express.Router();
 const crypto = require("crypto");
@@ -120,25 +121,33 @@ router.post("/ahaleads/fb-pixel", async (req, res) => {
         zp: event.zp,
         pincode: event.pincode,
         lead_id: event.lead_id,
-        country: event.country,
-        email: event.email
+        country: event.country
       });
 
       // Handle Zoho CRM field names: ph, zp, ct, st
       // Map CRM fields to standard format
-      const rawPhone = event.ph || event.phone || null;
-      const rawFullName = event.full_name || null;
-      const rawCity = event.ct || event.city || null;
-      const rawState = event.st || event.state || null;
-      const rawPincode = event.zp || event.pincode || null;
+      const rawPhone = event.ph;
+      const rawFullName = event.full_name;
+      const rawCity = event.ct;
+      const rawState = event.st;
+      const rawPincode = event.zp;
       // Handle lead ID - check multiple possible field names
-      const rawLeadId = event.lead_id || event.id || event.Lead_ID || event.record_id || event.zoho_lead_id || null;
+      const rawLeadId = event.lead_id;
+      // Extract event_id from CRM (separate from lead_id)
+      const rawEventId = event.event_id || null;
       
       // Debug: Log lead ID extraction
       if (!rawLeadId) {
         console.log(`  → Lead ID not found. Checked fields: lead_id=${event.lead_id}, id=${event.id}, Lead_ID=${event.Lead_ID}, record_id=${event.record_id}, zoho_lead_id=${event.zoho_lead_id}`);
       } else {
         console.log(`  → Lead ID found: "${rawLeadId}"`);
+      }
+      
+      // Debug: Log event ID extraction
+      if (!rawEventId) {
+        console.log(`  → Event ID not found. event_id=${event.event_id}`);
+      } else {
+        console.log(`  → Event ID found: "${rawEventId}"`);
       }
 
       // Clean phone number
@@ -163,9 +172,10 @@ router.post("/ahaleads/fb-pixel", async (req, res) => {
       // Build processed event with both original and processed fields
       const processedEvent = {
         // Event metadata
-        event_name: event.event_name || "Lead",
+        event_name: event.event_name,
         event_time: eventTime,
-        action_source: event.action_source || "website",
+        action_source: event.action_source,
+        event_id: rawEventId,
         lead_id: rawLeadId,
         
         // Original fields (for reference)
@@ -174,8 +184,7 @@ router.post("/ahaleads/fb-pixel", async (req, res) => {
         city_raw: rawCity,
         state_raw: rawState,
         pincode_raw: rawPincode,
-        country: event.country || null,
-        email: event.email || null,
+        country: event.country,
         
         // Processed fields (ready for Facebook Pixel)
         fn: fn, // First name
@@ -185,47 +194,39 @@ router.post("/ahaleads/fb-pixel", async (req, res) => {
         state: rawState,
         pincode: rawPincode,
         
-        // Hashed fields (for Facebook Pixel CAPI)
-        hashed: {
-          fn: fn ? sha256(fn) : null, // Hashed first name
-          ln: ln ? sha256(ln) : null, // Hashed last name
-          ph: cleanedPhone ? sha256(cleanedPhone) : null, // Hashed phone
-          em: event.email ? sha256(event.email) : null, // Hashed email
-          ct: rawCity ? sha256(rawCity.toLowerCase()) : null, // Hashed city
-          st: rawState ? sha256(rawState.toLowerCase()) : null, // Hashed state
-          zp: rawPincode ? sha256(rawPincode) : null, // Hashed zipcode/pincode
-          country: event.country ? sha256(event.country.toLowerCase()) : null // Hashed country
-        },
-        
         // Metadata
         received_at: new Date().toISOString(),
         index: index
       };
 
-      console.log(`\nEvent ${index + 1}:`, JSON.stringify(processedEvent, null, 2));
-      console.log(`  → Name split: "${rawFullName}" → fn: "${fn}", ln: "${ln}"`);
-      console.log(`  → Phone cleaned: "${rawPhone}" → "${cleanedPhone}"`);
-      console.log(`  → Hashed: fn="${processedEvent.hashed.fn}", ln="${processedEvent.hashed.ln}", ph="${processedEvent.hashed.ph}"`);
       return processedEvent;
     });
 
     // Build Facebook Pixel CAPI format with hashed data
     const pixelData = processedEvents.map((event) => {
+      // Calculate hashed values for Facebook Pixel CAPI
+      const hashedFn = event.fn ? sha256(event.fn) : null;
+      const hashedLn = event.ln ? sha256(event.ln) : null;
+      const hashedPh = event.phone ? sha256(event.phone) : null;
+      const hashedCt = event.city ? sha256(event.city.toLowerCase()) : null;
+      const hashedSt = event.state ? sha256(event.state.toLowerCase()) : null;
+      const hashedZp = event.pincode ? sha256(event.pincode) : null;
+      const hashedCountry = event.country ? sha256(event.country.toLowerCase()) : null;
+      
       // Build user_data object with hashed values (Facebook Pixel CAPI format)
       const user_data = {};
-      if (event.hashed.fn) user_data.fn = [event.hashed.fn];
-      if (event.hashed.ln) user_data.ln = [event.hashed.ln];
-      if (event.hashed.ph) user_data.ph = [event.hashed.ph];
-      if (event.hashed.em) user_data.em = [event.hashed.em];
-      if (event.hashed.ct) user_data.ct = [event.hashed.ct];
-      if (event.hashed.st) user_data.st = [event.hashed.st];
-      if (event.hashed.zp) user_data.zp = [event.hashed.zp];
-      if (event.hashed.country) user_data.country = [event.hashed.country];
-      if (event.lead_id) user_data.lead_id = [event.lead_id];
+      if (hashedFn) user_data.fn = [hashedFn];
+      if (hashedLn) user_data.ln = [hashedLn];
+      if (hashedPh) user_data.ph = [hashedPh];
+      if (hashedCt) user_data.ct = [hashedCt];
+      if (hashedSt) user_data.st = [hashedSt];
+      if (hashedZp) user_data.zp = [hashedZp];
+      if (hashedCountry) user_data.country = [hashedCountry];
+      if (event.event_id) user_data.lead_id = [event.event_id];
 
       // Validate that user_data has at least one customer information parameter
-      // Facebook requires at least one of: fn, ln, ph, em, ct, st, zp, country, or lead_id
-      const hasCustomerInfo = user_data.fn || user_data.ln || user_data.ph || user_data.em || 
+      // Facebook requires at least one of: fn, ln, ph, ct, st, zp, country, or lead_id
+      const hasCustomerInfo = user_data.fn || user_data.ln || user_data.ph || 
                                user_data.ct || user_data.st || user_data.zp || user_data.country || user_data.lead_id;
       
       if (!hasCustomerInfo) {
@@ -234,28 +235,23 @@ router.post("/ahaleads/fb-pixel", async (req, res) => {
           fn: event.fn,
           ln: event.ln,
           phone: event.phone,
-          email: event.email,
           city: event.city,
           state: event.state,
           pincode: event.pincode,
           country: event.country,
-          lead_id: event.lead_id
+          event_id: event.event_id
         });
       }
 
       // Build custom_data object
       const custom_data = {};
-      if (event.lead_id) custom_data.lead_id = event.lead_id;
-      if (event.city) custom_data.city = event.city;
-      if (event.state) custom_data.state = event.state;
-      if (event.pincode) custom_data.pincode = event.pincode;
-      if (event.country) custom_data.country = event.country;
+      if (event.event_id) custom_data.lead_id = event.event_id;
 
       return {
         event_name: event.event_name,
         event_time: event.event_time,
         action_source: event.action_source,
-        event_id: event.lead_id ? `lead_${event.lead_id}` : `lead_${Date.now()}_${event.index}`,
+        event_id: event.event_id ? `crm_lead_${event.event_id}` : `lead_${Date.now()}_${event.index}`,
         user_data: user_data,
         custom_data: custom_data
       };
@@ -265,7 +261,7 @@ router.post("/ahaleads/fb-pixel", async (req, res) => {
     const validPixelData = pixelData.filter((event, index) => {
       const hasCustomerInfo = event.user_data && (
         event.user_data.fn || event.user_data.ln || event.user_data.ph || 
-        event.user_data.em || event.user_data.ct || event.user_data.st || 
+        event.user_data.ct || event.user_data.st || 
         event.user_data.zp || event.user_data.country || event.user_data.lead_id
       );
       
@@ -280,7 +276,7 @@ router.post("/ahaleads/fb-pixel", async (req, res) => {
       return res.status(400).json({
         ok: false,
         error: "No valid events to send",
-        message: "All events are missing customer information parameters. Facebook requires at least one of: fn, ln, ph, em, ct, st, zp, country, or lead_id",
+        message: "All events are missing customer information parameters. Facebook requires at least one of: fn, ln, ph, ct, st, zp, country, or lead_id",
         events_received: events.length,
         events: processedEvents
       });
@@ -289,7 +285,7 @@ router.post("/ahaleads/fb-pixel", async (req, res) => {
     // Send to Facebook Pixel CAPI
     const requestBody = {
       data: validPixelData,
-      test_event_code: "TEST15990"
+      test_event_code: "TEST83793"
     };
     
     console.log("\nSending to Facebook Pixel CAPI:");
@@ -334,16 +330,7 @@ router.post("/ahaleads/fb-pixel", async (req, res) => {
         description: "Data formatted for Facebook Pixel CAPI (with SHA256 hashed user data)",
         data: pixelData
       },
-      pixel_response: pixelResponse,
-      processed_fields: {
-        fn: "First name (split from full_name)",
-        ln: "Last name (split from full_name)",
-        phone: "Cleaned phone number with country code",
-        city: "City (from ct field)",
-        state: "State (from st field)",
-        pincode: "Pincode/Zipcode (from zp field)",
-        hashed: "SHA256 hashed versions of fn, ln, ph, em, ct, st, zp, country (sent to Facebook Pixel CAPI)"
-      }
+      pixel_response: pixelResponse
     });
   } catch (err) {
     console.error("Error:", err);
@@ -373,7 +360,7 @@ router.post("/webhook/zoho-lead", async (req, res) => {
     // Process each event in the array
     const processedEvents = events.map((event, index) => {
       // Handle lead ID - check multiple possible field names
-      const rawLeadId = event.lead_id || event.id || event.Lead_ID || event.record_id || event.zoho_lead_id || null;
+      const rawLeadId = event.lead_id;
       
       const processedEvent = {
         event_name: event.event_name || "Zoho_FB_Lead_New",
@@ -381,12 +368,11 @@ router.post("/webhook/zoho-lead", async (req, res) => {
         action_source: event.action_source || "website",
         lead_id: rawLeadId,
         full_name: event.full_name || `${event.first_name || ""} ${event.last_name || ""}`.trim() || null,
-        phone: event.phone || null,
-        email: event.email || null,
-        city: event.city || null,
-        state: event.state || null,
-        pincode: event.pincode || null,
-        country: event.country || null,
+        phone: event.phone,
+        city: event.city ,
+        state: event.state ,
+        pincode: event.pincode ,
+        country: event.country ,
         received_at: new Date().toISOString(),
         index: index
       };
@@ -395,15 +381,6 @@ router.post("/webhook/zoho-lead", async (req, res) => {
       return processedEvent;
     });
 
-    // TODO: Facebook Pixel integration will be added here later
-    // const response = await fetch(
-    //   `https://graph.facebook.com/v18.0/${process.env.PIXEL_ID}/events?access_token=${process.env.ACCESS_TOKEN}`,
-    //   {
-    //     method: "POST",
-    //     body: JSON.stringify({ data: processedEvents }),
-    //     headers: { "Content-Type": "application/json" },
-    //   }
-    // );
 
     return res.json({ 
       ok: true, 
