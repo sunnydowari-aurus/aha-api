@@ -11,92 +11,58 @@ const sha256 = (v) => {
     .digest("hex");
 };
 
-// Test endpoint to verify Facebook Pixel is working
+// Test endpoint - Currently just logs data, Facebook Pixel integration disabled
 router.post("/test/pixel", async (req, res) => {
   try {
-    // Validate environment variables
-    if (!process.env.PIXEL_ID) {
-      return res.status(400).json({ 
-        error: "Missing PIXEL_ID environment variable",
-        message: "Please set PIXEL_ID in your .env file"
-      });
-    }
-    
-    if (!process.env.ACCESS_TOKEN) {
-      return res.status(400).json({ 
-        error: "Missing ACCESS_TOKEN environment variable",
-        message: "Please set ACCESS_TOKEN in your .env file"
-      });
-    }
-
     const data = req.body;
 
-    // Extract lead fields (with defaults for testing)
-    const leadId = data.lead_id || `test_${Date.now()}`;
-    const email = data.email;
-    const phone = data.phone;
-    const firstName = data.first_name;
-    const lastName = data.last_name;
-    
-    // Validate and set event time (must be within last 7 days for Meta CAPI)
-    let createdTime;
-    if (data.created_time) {
-      const providedTime = Math.floor(new Date(data.created_time).getTime() / 1000);
-      const currentTime = Math.floor(Date.now() / 1000);
-      const sevenDaysAgo = currentTime - (7 * 24 * 60 * 60); // 7 days in seconds
-      
-      // If timestamp is older than 7 days, use current time instead
-      if (providedTime < sevenDaysAgo) {
-        console.warn(`Provided timestamp ${data.created_time} is too old (>7 days). Using current time instead.`);
-        createdTime = currentTime;
-      } else {
-        createdTime = providedTime;
-      }
-    } else {
-      createdTime = Math.floor(Date.now() / 1000);
-    }
+    // Handle array format or single object format
+    const events = Array.isArray(data) ? data : [data];
 
-    // Hash user data for Meta CAPI
-    const user_data = {};
-    if (email) user_data.em = [sha256(email)];
-    if (phone) user_data.ph = [sha256(phone.replace(/\D/g, ""))];
-    if (firstName) user_data.fn = [sha256(firstName)];
-    if (lastName) user_data.ln = [sha256(lastName)];
+    console.log("=".repeat(80));
+    console.log("RECEIVED DATA (Facebook Pixel call disabled - logging only):");
+    console.log("=".repeat(80));
+    console.log(JSON.stringify(events, null, 2));
+    console.log("=".repeat(80));
 
-    // Create event object for Meta
-    const eventObj = {
-      event_name: "Lead",
-      event_time: createdTime,
-      action_source: "other",
-      event_id: `lead_${leadId}`,
-      user_data,
-      custom_data: {
-        lead_id: leadId,
-        lead_source: data.lead_source || "Test",
-        city: data.city || "",
-      },
-    };
+    // Process each event in the array
+    const processedEvents = events.map((event, index) => {
+      const processedEvent = {
+        event_name: event.event_name || "Lead",
+        event_time: event.event_time || Math.floor(Date.now() / 1000),
+        action_source: event.action_source || "website",
+        meta_lead_id: event.meta_lead_id || null,
+        full_name: event.full_name || null,
+        phone: event.phone || null,
+        email: event.email || null,
+        city: event.city || null,
+        state: event.state || null,
+        pincode: event.pincode || null,
+        country: event.country || null,
+        received_at: new Date().toISOString(),
+        index: index
+      };
 
-    console.log("Sending to Meta CAPI:", JSON.stringify(eventObj, null, 2));
-    console.log("Using PIXEL_ID:", process.env.PIXEL_ID);
+      console.log(`\nEvent ${index + 1}:`, JSON.stringify(processedEvent, null, 2));
+      return processedEvent;
+    });
 
-    // Send to Meta CAPI
-    const response = await fetch(
-      `https://graph.facebook.com/v18.0/${process.env.PIXEL_ID}/events?access_token=${process.env.ACCESS_TOKEN}`,
-      {
-        method: "POST",
-        body: JSON.stringify({ data: [eventObj] }),
-        headers: { "Content-Type": "application/json" },
-      }
-    );
-
-    const json = await response.json();
-    console.log("Meta CAPI Response:", json);
+    // TODO: Facebook Pixel integration will be added here later
+    // const response = await fetch(
+    //   `https://graph.facebook.com/v18.0/${process.env.PIXEL_ID}/events?access_token=${process.env.ACCESS_TOKEN}`,
+    //   {
+    //     method: "POST",
+    //     body: JSON.stringify({ data: processedEvents }),
+    //     headers: { "Content-Type": "application/json" },
+    //   }
+    // );
 
     return res.json({ 
       ok: true, 
-      meta: json,
-      sent_data: eventObj
+      message: "Data received and logged successfully (Facebook Pixel integration disabled)",
+      events_received: events.length,
+      events: processedEvents,
+      note: "Facebook Pixel API call is currently disabled. Data is only being logged."
     });
   } catch (err) {
     console.error("Error:", err);
@@ -104,96 +70,67 @@ router.post("/test/pixel", async (req, res) => {
   }
 });
 
-// Zoho webhook endpoint
+// Zoho webhook endpoint - Currently just logs data, Facebook Pixel integration disabled
 router.post("/webhook/zoho-lead", async (req, res) => {
   try {
-    // Validate secret
-    if (req.headers["x-zoho-secret"] !== process.env.ZOHO_SHARED_SECRET) {
+    // Validate secret (optional - can be disabled for testing)
+    if (process.env.ZOHO_SHARED_SECRET && req.headers["x-zoho-secret"] !== process.env.ZOHO_SHARED_SECRET) {
       return res.status(401).json({ error: "Unauthorized" });
-    }
-
-    // Validate environment variables
-    if (!process.env.PIXEL_ID) {
-      return res.status(500).json({ 
-        error: "Missing PIXEL_ID environment variable",
-        message: "Please set PIXEL_ID in your .env file"
-      });
-    }
-    
-    if (!process.env.ACCESS_TOKEN) {
-      return res.status(500).json({ 
-        error: "Missing ACCESS_TOKEN environment variable",
-        message: "Please set ACCESS_TOKEN in your .env file"
-      });
     }
 
     const data = req.body;
 
-    // Extract lead fields
-    const leadId = data.lead_id;
-    const email = data.email;
-    const phone = data.phone;
-    const firstName = data.first_name;
-    const lastName = data.last_name;
-    
-    // Validate and set event time (must be within last 7 days for Meta CAPI)
-    let createdTime;
-    if (data.created_time) {
-      const providedTime = Math.floor(new Date(data.created_time).getTime() / 1000);
-      const currentTime = Math.floor(Date.now() / 1000);
-      const sevenDaysAgo = currentTime - (7 * 24 * 60 * 60); // 7 days in seconds
-      
-      // If timestamp is older than 7 days, use current time instead
-      if (providedTime < sevenDaysAgo) {
-        console.warn(`Provided timestamp ${data.created_time} is too old (>7 days). Using current time instead.`);
-        createdTime = currentTime;
-      } else {
-        createdTime = providedTime;
-      }
-    } else {
-      createdTime = Math.floor(Date.now() / 1000);
-    }
+    // Handle array format or single object format
+    const events = Array.isArray(data) ? data : [data];
 
-    // Hash user data for Meta CAPI
-    const user_data = {};
-    if (email) user_data.em = [sha256(email)];
-    if (phone) user_data.ph = [sha256(phone.replace(/\D/g, ""))];
-    if (firstName) user_data.fn = [sha256(firstName)];
-    if (lastName) user_data.ln = [sha256(lastName)];
+    console.log("=".repeat(80));
+    console.log("ZOHO WEBHOOK DATA (Facebook Pixel call disabled - logging only):");
+    console.log("=".repeat(80));
+    console.log(JSON.stringify(events, null, 2));
+    console.log("=".repeat(80));
 
-    // Create event object for Meta
-    const eventObj = {
-      event_name: "Lead",
-      event_time: createdTime,
-      action_source: "other",
-      event_id: `lead_${leadId}`,
-      user_data,
-      custom_data: {
-        lead_id: leadId,
-        lead_source: data.lead_source || "",
-        city: data.city || "",
-      },
-    };
+    // Process each event in the array
+    const processedEvents = events.map((event, index) => {
+      const processedEvent = {
+        event_name: event.event_name || "Zoho_FB_Lead_New",
+        event_time: event.event_time || Math.floor(Date.now() / 1000),
+        action_source: event.action_source || "website",
+        meta_lead_id: event.meta_lead_id || event.lead_id || null,
+        full_name: event.full_name || `${event.first_name || ""} ${event.last_name || ""}`.trim() || null,
+        phone: event.phone || null,
+        email: event.email || null,
+        city: event.city || null,
+        state: event.state || null,
+        pincode: event.pincode || null,
+        country: event.country || null,
+        received_at: new Date().toISOString(),
+        index: index
+      };
 
-    console.log("Using PIXEL_ID:", process.env.PIXEL_ID);
+      console.log(`\nEvent ${index + 1}:`, JSON.stringify(processedEvent, null, 2));
+      return processedEvent;
+    });
 
-    // Send to Meta CAPI
-    const response = await fetch(
-      `https://graph.facebook.com/v18.0/${process.env.PIXEL_ID}/events?access_token=${process.env.ACCESS_TOKEN}`,
-      {
-        method: "POST",
-        body: JSON.stringify({ data: [eventObj] }),
-        headers: { "Content-Type": "application/json" },
-      }
-    );
+    // TODO: Facebook Pixel integration will be added here later
+    // const response = await fetch(
+    //   `https://graph.facebook.com/v18.0/${process.env.PIXEL_ID}/events?access_token=${process.env.ACCESS_TOKEN}`,
+    //   {
+    //     method: "POST",
+    //     body: JSON.stringify({ data: processedEvents }),
+    //     headers: { "Content-Type": "application/json" },
+    //   }
+    // );
 
-    const json = await response.json();
-    console.log("Meta CAPI Response:", json);
-
-    return res.json({ ok: true, meta: json });
+    return res.json({ 
+      ok: true, 
+      message: "Webhook data received and logged successfully (Facebook Pixel integration disabled)",
+      events_received: events.length,
+      events: processedEvents,
+      note: "Facebook Pixel API call is currently disabled. Data is only being logged."
+    });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: "internal error" });
+    console.error("Error:", err);
+    return res.status(500).json({ error: "internal error", message: err.message });
   }
 });
 
