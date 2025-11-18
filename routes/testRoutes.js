@@ -14,6 +14,21 @@ const sha256 = (v) => {
 // Test endpoint to verify Facebook Pixel is working
 router.post("/test/pixel", async (req, res) => {
   try {
+    // Validate environment variables
+    if (!process.env.PIXEL_ID) {
+      return res.status(400).json({ 
+        error: "Missing PIXEL_ID environment variable",
+        message: "Please set PIXEL_ID in your .env file"
+      });
+    }
+    
+    if (!process.env.ACCESS_TOKEN) {
+      return res.status(400).json({ 
+        error: "Missing ACCESS_TOKEN environment variable",
+        message: "Please set ACCESS_TOKEN in your .env file"
+      });
+    }
+
     const data = req.body;
 
     // Extract lead fields (with defaults for testing)
@@ -22,9 +37,24 @@ router.post("/test/pixel", async (req, res) => {
     const phone = data.phone;
     const firstName = data.first_name;
     const lastName = data.last_name;
-    const createdTime = data.created_time 
-      ? Math.floor(new Date(data.created_time).getTime() / 1000)
-      : Math.floor(Date.now() / 1000);
+    
+    // Validate and set event time (must be within last 7 days for Meta CAPI)
+    let createdTime;
+    if (data.created_time) {
+      const providedTime = Math.floor(new Date(data.created_time).getTime() / 1000);
+      const currentTime = Math.floor(Date.now() / 1000);
+      const sevenDaysAgo = currentTime - (7 * 24 * 60 * 60); // 7 days in seconds
+      
+      // If timestamp is older than 7 days, use current time instead
+      if (providedTime < sevenDaysAgo) {
+        console.warn(`Provided timestamp ${data.created_time} is too old (>7 days). Using current time instead.`);
+        createdTime = currentTime;
+      } else {
+        createdTime = providedTime;
+      }
+    } else {
+      createdTime = Math.floor(Date.now() / 1000);
+    }
 
     // Hash user data for Meta CAPI
     const user_data = {};
@@ -48,6 +78,7 @@ router.post("/test/pixel", async (req, res) => {
     };
 
     console.log("Sending to Meta CAPI:", JSON.stringify(eventObj, null, 2));
+    console.log("Using PIXEL_ID:", process.env.PIXEL_ID);
 
     // Send to Meta CAPI
     const response = await fetch(
@@ -81,6 +112,21 @@ router.post("/webhook/zoho-lead", async (req, res) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
+    // Validate environment variables
+    if (!process.env.PIXEL_ID) {
+      return res.status(500).json({ 
+        error: "Missing PIXEL_ID environment variable",
+        message: "Please set PIXEL_ID in your .env file"
+      });
+    }
+    
+    if (!process.env.ACCESS_TOKEN) {
+      return res.status(500).json({ 
+        error: "Missing ACCESS_TOKEN environment variable",
+        message: "Please set ACCESS_TOKEN in your .env file"
+      });
+    }
+
     const data = req.body;
 
     // Extract lead fields
@@ -89,7 +135,24 @@ router.post("/webhook/zoho-lead", async (req, res) => {
     const phone = data.phone;
     const firstName = data.first_name;
     const lastName = data.last_name;
-    const createdTime = Math.floor(new Date(data.created_time).getTime() / 1000);
+    
+    // Validate and set event time (must be within last 7 days for Meta CAPI)
+    let createdTime;
+    if (data.created_time) {
+      const providedTime = Math.floor(new Date(data.created_time).getTime() / 1000);
+      const currentTime = Math.floor(Date.now() / 1000);
+      const sevenDaysAgo = currentTime - (7 * 24 * 60 * 60); // 7 days in seconds
+      
+      // If timestamp is older than 7 days, use current time instead
+      if (providedTime < sevenDaysAgo) {
+        console.warn(`Provided timestamp ${data.created_time} is too old (>7 days). Using current time instead.`);
+        createdTime = currentTime;
+      } else {
+        createdTime = providedTime;
+      }
+    } else {
+      createdTime = Math.floor(Date.now() / 1000);
+    }
 
     // Hash user data for Meta CAPI
     const user_data = {};
@@ -111,6 +174,8 @@ router.post("/webhook/zoho-lead", async (req, res) => {
         city: data.city || "",
       },
     };
+
+    console.log("Using PIXEL_ID:", process.env.PIXEL_ID);
 
     // Send to Meta CAPI
     const response = await fetch(
