@@ -132,12 +132,21 @@ router.post("/ahaleads/fb-pixel", async (req, res) => {
       const rawPincode = event.zp;
       // Handle lead ID - check multiple possible field names
       const rawLeadId = event.lead_id;
+      // Extract event_id from CRM (separate from lead_id)
+      const rawEventId = event.event_id || null;
       
       // Debug: Log lead ID extraction
       if (!rawLeadId) {
         console.log(`  → Lead ID not found. Checked fields: lead_id=${event.lead_id}, id=${event.id}, Lead_ID=${event.Lead_ID}, record_id=${event.record_id}, zoho_lead_id=${event.zoho_lead_id}`);
       } else {
         console.log(`  → Lead ID found: "${rawLeadId}"`);
+      }
+      
+      // Debug: Log event ID extraction
+      if (!rawEventId) {
+        console.log(`  → Event ID not found. event_id=${event.event_id}`);
+      } else {
+        console.log(`  → Event ID found: "${rawEventId}"`);
       }
 
       // Clean phone number
@@ -165,7 +174,8 @@ router.post("/ahaleads/fb-pixel", async (req, res) => {
         event_name: event.event_name,
         event_time: eventTime,
         action_source: event.action_source,
-        event_id: rawLeadId,
+        event_id: rawEventId,
+        lead_id: rawLeadId,
         
         // Original fields (for reference)
         full_name: rawFullName,
@@ -183,17 +193,6 @@ router.post("/ahaleads/fb-pixel", async (req, res) => {
         state: rawState,
         pincode: rawPincode,
         
-        // Hashed fields (for Facebook Pixel CAPI)
-        hashed: {
-          fn: fn ? sha256(fn) : null,
-          ln: ln ? sha256(ln) : null,
-          ph: cleanedPhone ? sha256(cleanedPhone) : null,
-          ct: rawCity ? sha256(rawCity.toLowerCase()) : null,  
-          st: rawState ? sha256(rawState.toLowerCase()) : null,
-          zp: rawPincode ? sha256(rawPincode) : null,
-          country: event.country ? sha256(event.country.toLowerCase()) : null
-        },
-        
         // Metadata
         received_at: new Date().toISOString(),
         index: index
@@ -204,15 +203,24 @@ router.post("/ahaleads/fb-pixel", async (req, res) => {
 
     // Build Facebook Pixel CAPI format with hashed data
     const pixelData = processedEvents.map((event) => {
+      // Calculate hashed values for Facebook Pixel CAPI
+      const hashedFn = event.fn ? sha256(event.fn) : null;
+      const hashedLn = event.ln ? sha256(event.ln) : null;
+      const hashedPh = event.phone ? sha256(event.phone) : null;
+      const hashedCt = event.city ? sha256(event.city.toLowerCase()) : null;
+      const hashedSt = event.state ? sha256(event.state.toLowerCase()) : null;
+      const hashedZp = event.pincode ? sha256(event.pincode) : null;
+      const hashedCountry = event.country ? sha256(event.country.toLowerCase()) : null;
+      
       // Build user_data object with hashed values (Facebook Pixel CAPI format)
       const user_data = {};
-      if (event.hashed.fn) user_data.fn = [event.hashed.fn];
-      if (event.hashed.ln) user_data.ln = [event.hashed.ln];
-      if (event.hashed.ph) user_data.ph = [event.hashed.ph];
-      if (event.hashed.ct) user_data.ct = [event.hashed.ct];
-      if (event.hashed.st) user_data.st = [event.hashed.st];
-      if (event.hashed.zp) user_data.zp = [event.hashed.zp];
-      if (event.hashed.country) user_data.country = [event.hashed.country];
+      if (hashedFn) user_data.fn = [hashedFn];
+      if (hashedLn) user_data.ln = [hashedLn];
+      if (hashedPh) user_data.ph = [hashedPh];
+      if (hashedCt) user_data.ct = [hashedCt];
+      if (hashedSt) user_data.st = [hashedSt];
+      if (hashedZp) user_data.zp = [hashedZp];
+      if (hashedCountry) user_data.country = [hashedCountry];
       if (event.event_id) user_data.lead_id = [event.event_id];
 
       // Validate that user_data has at least one customer information parameter
