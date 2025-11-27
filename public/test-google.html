@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Ads Conversion Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 300px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #4285f4;
+        }
+
+        .btn {
+            background: #4285f4;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            background: #357ae8;
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #34a853;
+        }
+
+        .btn-secondary:hover {
+            background: #2d8f47;
+        }
+
+        .response-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            display: none;
+        }
+
+        .response-section.show {
+            display: block;
+        }
+
+        .response-section h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .response-content {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .status.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            display: block;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            display: block;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            display: block;
+        }
+
+        .sample-data {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 13px;
+        }
+
+        .sample-data code {
+            background: #fff;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .copy-btn {
+            background: #6c757d;
+            font-size: 14px;
+            padding: 8px 15px;
+            margin-top: 10px;
+        }
+
+        .copy-btn:hover {
+            background: #5a6268;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🧪 Google Ads Conversion Test</h1>
+        <p class="subtitle">Test the Google Ads conversion endpoint directly from your browser</p>
+
+        <div class="sample-data">
+            <strong>⚠️ Important:</strong> This page tests the <code>/google</code> conversion endpoint, NOT the OAuth
+            flow.
+            <br><br>
+            <strong>💡 Sample Data:</strong> Click to load sample request body
+            <br><br>
+            <code onclick="loadSampleData()" style="cursor: pointer; color: #0066cc;">📋 Load Sample Data</code>
+        </div>
+
+        <div class="form-group">
+            <label for="requestBody">Request Body (JSON):</label>
+            <textarea id="requestBody" placeholder='Enter JSON request body here...'></textarea>
+        </div>
+
+        <button class="btn" id="sendBtn" onclick="sendRequest()">
+            🚀 Send Request
+        </button>
+        <button class="btn btn-secondary" onclick="copyResponse()">
+            📋 Copy Response
+        </button>
+        <button class="btn btn-secondary" onclick="clearAll()">
+            🗑️ Clear
+        </button>
+
+        <div class="status" id="status"></div>
+
+        <div class="response-section" id="responseSection">
+            <h3>📥 Response:</h3>
+            <div class="response-content" id="responseContent"></div>
+        </div>
+    </div>
+
+    <script>
+        const BASE_URL = window.location.origin;
+
+        function loadSampleData() {
+            const sampleData = {
+                "event_name": "Contact",
+                "event_time": 1764135759,
+                "full_name": "Johnny Quest",
+                "ph": "+919322606564",
+                "zp": "400037",
+                "ct": "New Panvel",
+                "st": "Maharashtra",
+                "country": "India"
+            };
+
+            document.getElementById('requestBody').value = JSON.stringify(sampleData, null, 2);
+            showStatus('info', '✅ Sample data loaded!');
+        }
+
+        function sendRequest() {
+            const btn = document.getElementById('sendBtn');
+            const requestBody = document.getElementById('requestBody').value;
+            const responseSection = document.getElementById('responseSection');
+            const responseContent = document.getElementById('responseContent');
+
+            // Validate JSON
+            let jsonData;
+            try {
+                jsonData = JSON.parse(requestBody);
+            } catch (err) {
+                showStatus('error', '❌ Invalid JSON: ' + err.message);
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = '⏳ Sending...';
+            hideStatus();
+
+            console.log('Sending request to:', `${BASE_URL}/google`);
+            console.log('Request body:', jsonData);
+
+            fetch(`${BASE_URL}/google`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: requestBody
+            })
+                .then(response => {
+                    console.log('Response status:', response.status);
+                    console.log('Response headers:', response.headers);
+                    return response.json();
+                })
+                .then(data => {
+                    btn.disabled = false;
+                    btn.textContent = '🚀 Send Request';
+
+                    console.log('Response data:', data);
+
+                    // Display response
+                    responseContent.textContent = JSON.stringify(data, null, 2);
+                    responseSection.classList.add('show');
+
+                    if (data.ok) {
+                        showStatus('success', '✅ Request successful! Conversion sent to Google Ads.');
+                    } else {
+                        showStatus('error', '❌ Request failed: ' + (data.error || 'Unknown error'));
+                    }
+
+                    // Scroll to response
+                    responseSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                })
+                .catch(error => {
+                    btn.disabled = false;
+                    btn.textContent = '🚀 Send Request';
+                    showStatus('error', '❌ Error: ' + error.message);
+                    responseContent.textContent = 'Error: ' + error.message;
+                    responseSection.classList.add('show');
+                });
+        }
+
+        function copyResponse() {
+            const responseContent = document.getElementById('responseContent').textContent;
+            if (responseContent) {
+                navigator.clipboard.writeText(responseContent).then(() => {
+                    showStatus('success', '✅ Response copied to clipboard!');
+                });
+            } else {
+                showStatus('info', '⚠️ No response to copy');
+            }
+        }
+
+        function clearAll() {
+            document.getElementById('requestBody').value = '';
+            document.getElementById('responseSection').classList.remove('show');
+            document.getElementById('responseContent').textContent = '';
+            hideStatus();
+        }
+
+        function showStatus(type, message) {
+            const status = document.getElementById('status');
+            status.className = 'status ' + type;
+            status.textContent = message;
+        }
+
+        function hideStatus() {
+            const status = document.getElementById('status');
+            status.className = 'status';
+            status.textContent = '';
+        }
+
+        // Load sample data on page load
+        window.onload = function () {
+            loadSampleData();
+        };
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Ads OAuth Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .info-box {
+            background: #f5f5f5;
+            border-left: 4px solid #4285f4;
+            padding: 15px;
+            margin-bottom: 25px;
+            border-radius: 4px;
+        }
+        
+        .info-box h3 {
+            color: #4285f4;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        
+        .info-box ul {
+            margin-left: 20px;
+            color: #555;
+            line-height: 1.8;
+        }
+        
+        .info-box li {
+            margin-bottom: 5px;
+        }
+        
+        .btn {
+            background: #4285f4;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.3s;
+            margin-bottom: 15px;
+        }
+        
+        .btn:hover {
+            background: #357ae8;
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            display: none;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            display: block;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            display: block;
+        }
+        
+        .status.info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            display: block;
+        }
+        
+        .token-display {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 12px;
+            display: none;
+        }
+        
+        .token-display.show {
+            display: block;
+        }
+        
+        .copy-btn {
+            background: #34a853;
+            margin-top: 10px;
+            padding: 8px 15px;
+            font-size: 14px;
+        }
+        
+        .copy-btn:hover {
+            background: #2d8f47;
+        }
+        
+        .env-note {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+            color: #856404;
+            font-size: 13px;
+        }
+        
+        .env-note code {
+            background: #fff;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Google Ads OAuth Test</h1>
+        <p class="subtitle">Test OAuth 2.0 authentication for Google Ads API</p>
+        
+        <div class="info-box">
+            <h3>📋 Prerequisites</h3>
+            <ul>
+                <li>OAuth Client ID configured in Google Cloud Console</li>
+                <li>Redirect URI set to: <code>http://localhost:3000/oauth/callback</code></li>
+                <li>Your account added as a Test User</li>
+                <li>Required scopes: <code>https://www.googleapis.com/auth/adwords</code></li>
+            </ul>
+        </div>
+        
+        <button class="btn" id="authBtn" onclick="startOAuth()">
+            🚀 Start OAuth Flow
+        </button>
+        
+        <div class="status" id="status"></div>
+        
+        <div class="token-display" id="tokenDisplay">
+            <strong>Access Token:</strong>
+            <div id="tokenValue"></div>
+            <button class="btn copy-btn" onclick="copyToken()">📋 Copy Token</button>
+            <div class="env-note">
+                <strong>💡 Add this to your .env file:</strong><br>
+                <code>GOOGLE_ADS_ACCESS_TOKEN=<span id="envToken"></span></code>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Check if we're returning from OAuth callback
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const error = urlParams.get('error');
+        
+        if (error) {
+            showStatus('error', 'OAuth Error: ' + error);
+        } else if (code) {
+            // Exchange code for token
+            exchangeCodeForToken(code);
+        }
+        
+        function startOAuth() {
+            const btn = document.getElementById('authBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Redirecting...';
+            
+            // Get OAuth URL from server
+            fetch('/oauth/authorize')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.authUrl) {
+                        // Redirect to Google OAuth
+                        window.location.href = data.authUrl;
+                    } else {
+                        showStatus('error', data.error || 'Failed to get OAuth URL');
+                        btn.disabled = false;
+                        btn.textContent = '🚀 Start OAuth Flow';
+                    }
+                })
+                .catch(err => {
+                    showStatus('error', 'Error: ' + err.message);
+                    btn.disabled = false;
+                    btn.textContent = '🚀 Start OAuth Flow';
+                });
+        }
+        
+        function exchangeCodeForToken(code) {
+            showStatus('info', '⏳ Exchanging authorization code for access token...');
+            
+            fetch('/oauth/callback?code=' + encodeURIComponent(code))
+                .then(response => response.json())
+                .then(data => {
+                    if (data.ok && data.access_token) {
+                        showStatus('success', '✅ Successfully authenticated! Access token received.');
+                        displayToken(data.access_token, data.expires_in);
+                    } else {
+                        showStatus('error', data.error || 'Failed to exchange code for token');
+                    }
+                })
+                .catch(err => {
+                    showStatus('error', 'Error: ' + err.message);
+                });
+        }
+        
+        function displayToken(token, expiresIn) {
+            const tokenDisplay = document.getElementById('tokenDisplay');
+            const tokenValue = document.getElementById('tokenValue');
+            const envToken = document.getElementById('envToken');
+            
+            tokenValue.textContent = token;
+            envToken.textContent = token;
+            tokenDisplay.classList.add('show');
+        }
+        
+        function copyToken() {
+            const token = document.getElementById('tokenValue').textContent;
+            navigator.clipboard.writeText(token).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                const originalText = btn.textContent;
+                btn.textContent = '✅ Copied!';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                }, 2000);
+            });
+        }
+        
+        function showStatus(type, message) {
+            const status = document.getElementById('status');
+            status.className = 'status ' + type;
+            status.textContent = message;
+        }
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
