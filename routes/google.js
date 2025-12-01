@@ -103,6 +103,16 @@ const normalizeZohoFields = (event) => {
     const gbraid = event.gbraid || null;
     const wbraid = event.wbraid || null;
     
+    // Capture conversionAction from payload (required, no fallback)
+    const conversionAction = event.conversionAction || null;
+    
+    // Debug: Log conversionAction capture
+    if (conversionAction) {
+        console.log(`  🔍 Captured conversionAction from payload: ${conversionAction}`);
+    } else {
+        console.log(`  ⚠️ WARNING: conversionAction not found in payload`);
+    }
+    
     return {
         fn,
         ln,
@@ -116,11 +126,11 @@ const normalizeZohoFields = (event) => {
         gclid,
         gbraid,
         wbraid,
+        conversionAction, // Add conversionAction to normalized fields
         // Keep original fields for logging
         _original: {
             ct: event.ct || event.city || null,
-            st: event.st || event.state || null,
-            conversionAction: event.conversionAction || null // Will be ignored, use env var
+            st: event.st || event.state || null
         }
     };
 };
@@ -137,13 +147,8 @@ router.post("/", async (req, res) => {
             });
         }
         
-        if (!process.env.GOOGLE_CONVERSION_ACTION_RESOURCE_NAME) {
-            return res.status(400).json({
-                ok: false,
-                error: "Missing GOOGLE_CONVERSION_ACTION_RESOURCE_NAME environment variable",
-                message: "Please set GOOGLE_CONVERSION_ACTION_RESOURCE_NAME in your .env file"
-            });
-        }
+        // REMOVED: GOOGLE_CONVERSION_ACTION_RESOURCE_NAME validation
+        // conversionAction must come from payload
         
         if (!process.env.GOOGLE_ADS_DEVELOPER_TOKEN) {
             return res.status(400).json({
@@ -178,6 +183,14 @@ router.post("/", async (req, res) => {
         console.log(JSON.stringify(events, null, 2));
         console.log("=".repeat(80));
         
+        // CRITICAL: Log conversionAction from received payload
+        events.forEach((event, idx) => {
+            console.log(`\n🔍 Event ${idx + 1} - conversionAction from raw payload:`, event.conversionAction);
+            if (!event.conversionAction) {
+                console.error(`  ❌ ERROR: Event ${idx + 1} has NO conversionAction in payload!`);
+            }
+        });
+        
         // Process each event in the array
         const processedEvents = [];
         const eventErrors = [];
@@ -205,6 +218,7 @@ router.post("/", async (req, res) => {
                     deal_value: event.deal_value,
                     conversionDateTime: event.conversionDateTime,
                     event_time: event.event_time,
+                    conversionAction: event.conversionAction,
                     gclid: event.gclid,
                     gbraid: event.gbraid,
                     wbraid: event.wbraid
@@ -214,6 +228,22 @@ router.post("/", async (req, res) => {
                 // Validate required fields
                 if (!normalized.event_time) {
                     const errorMsg = `Event ${index + 1}: Missing required field. Must provide either 'event_time' (Unix timestamp) or 'conversionDateTime' (formatted or Unix timestamp)`;
+                    console.error(`  ❌ ${errorMsg}`);
+                    eventErrors.push({ event_index: index + 1, error: errorMsg });
+                    return; // Skip this event
+                }
+                
+                // Validate conversionAction is present in payload
+                if (!normalized.conversionAction) {
+                    const errorMsg = `Event ${index + 1}: Missing required field 'conversionAction'. Must provide 'conversionAction' in the payload (e.g., 'customers/6861463039/conversionActions/7396897617')`;
+                    console.error(`  ❌ ${errorMsg}`);
+                    eventErrors.push({ event_index: index + 1, error: errorMsg });
+                    return; // Skip this event
+                }
+                
+                // Validate conversionAction format
+                if (!normalized.conversionAction.match(/^customers\/\d+\/conversionActions\/\d+$/)) {
+                    const errorMsg = `Event ${index + 1}: Invalid 'conversionAction' format. Expected format: 'customers/{customer_id}/conversionActions/{conversion_action_id}' (received: '${normalized.conversionAction}')`;
                     console.error(`  ❌ ${errorMsg}`);
                     eventErrors.push({ event_index: index + 1, error: errorMsg });
                     return; // Skip this event
@@ -299,9 +329,23 @@ router.post("/", async (req, res) => {
             }
 
             // 2. CONSTRUCT MINIMAL GOOGLE ADS API PAYLOAD
+            // CRITICAL: Use conversionAction from payload ONLY (no env var fallback)
+            const conversionActionToUse = normalized.conversionAction;
+            
+            // Explicit validation and logging
+            if (!conversionActionToUse) {
+                console.error(`  ❌ ERROR: conversionAction is null/undefined in normalized object`);
+                console.error(`  Normalized object keys:`, Object.keys(normalized));
+                return null;
+            }
+            
+            console.log(`  🔍 DEBUG: About to create conversion object`);
+            console.log(`  🔍 DEBUG: normalized.conversionAction = ${normalized.conversionAction}`);
+            console.log(`  🔍 DEBUG: conversionActionToUse = ${conversionActionToUse}`);
+            
             const conversionObject = {
-                // Minimal required fields:
-                conversionAction: process.env.GOOGLE_CONVERSION_ACTION_RESOURCE_NAME,
+                // Use conversionAction from payload (required, no env var fallback)
+                conversionAction: conversionActionToUse,
                 conversionDateTime: formatTimestamp(normalized.event_time),
                 userIdentifiers: userIdentifiers, // Required for Enhanced Conversions
                 
@@ -309,6 +353,12 @@ router.post("/", async (req, res) => {
                 conversionValue: normalized.deal_value || 0.0,
                 currencyCode: normalized.currency_code || "USD", 
             };
+            
+            // Verify the conversion object has the correct conversionAction
+            console.log(`  🔍 DEBUG: conversionObject.conversionAction = ${conversionObject.conversionAction}`);
+            if (conversionObject.conversionAction !== conversionActionToUse) {
+                console.error(`  ❌ CRITICAL ERROR: conversionAction mismatch! Expected: ${conversionActionToUse}, Got: ${conversionObject.conversionAction}`);
+            }
 
             // Handle attribution IDs (priority: gclid > gbraid > wbraid)
             if (normalized.gclid) {
@@ -328,6 +378,8 @@ router.post("/", async (req, res) => {
             }
             
             console.log(`  ✅ Event ${index + 1} processed successfully`);
+            console.log(`  📍 Conversion Action from payload: ${normalized.conversionAction}`);
+            console.log(`  📍 Conversion Action in conversion object: ${conversionObject.conversionAction}`);
             console.log(`  Conversion object:`, JSON.stringify(conversionObject, null, 2));
             
             return conversionObject;
